@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/facturador-nf-react/',
+  base: '/',
   resolve: {
     alias: {
       // Tailwind v4 usa oklch(); html2canvas clásico falla. html2canvas-pro lo soporta.
