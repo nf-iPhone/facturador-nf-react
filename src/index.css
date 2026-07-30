@@ -1,0 +1,136 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Poppins', sans-serif;
+}
+
+/* Hoja A4: paddings no deben sumar altura fuera de 297mm */
+#print-sheet,
+.print-area {
+  box-sizing: border-box;
+}
+
+/* Estilos específicos para impresión */
+@media print {
+  html,
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  #root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+  #print-sheet,
+  .print-area {
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 296mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    aspect-ratio: auto !important;
+    overflow: hidden !important;
+  }
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}
+
+/* Scrollbar estilizado */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Flatpickr — tema oscuro */
+.flatpickr-calendar {
+  background: #1e293b;
+  border: 1px solid #475569;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  font-family: 'Poppins', sans-serif;
+}
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+  fill: #94a3b8;
+}
+.flatpickr-weekdays {
+  background: #0f172a;
+}
+span.flatpickr-weekday {
+  color: #94a3b8;
+}
+.flatpickr-day {
+  color: #e2e8f0;
+}
+.flatpickr-day:hover,
+.flatpickr-day:focus {
+  background: #334155;
+  border-color: #334155;
+}
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.flatpickr-day.today {
+  border-color: #3b82f6;
+}
+.flatpickr-day.flatpickr-disabled {
+  color: #64748b;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+@keyframes whatsapp-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

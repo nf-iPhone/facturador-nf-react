@@ -1,0 +1,71 @@
+export type DocType = 'Venta' | 'Presupuesto' | 'Soporte';
+
+export type PaymentMethod =
+  | 'Efectivo'
+  | 'Transferencia Bancaria'
+  | 'Tarjeta de Crédito / Débito'
+  | 'Mercado Pago'
+  | 'A convenir';
+
+export type OrderStatus =
+  | 'Pendiente de Pago'
+  | 'Pagado'
+  | 'En Diagnóstico'
+  | 'Esperando Repuesto'
+  | 'Reparado / Listo'
+  | 'Entregado';
+
+export interface InvoiceItem {
+  id: number;
+  description: string;
+  qty: number;
+  price: number;
+}
+
+export interface EmisorData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+}
+
+export interface ClientData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+}
+
+export interface TechData {
+  model: string;
+  imei: string;
+  code: string;
+  battery: string;
+  fault: string;
+  diag: string;
+}
+
+export interface InvoiceData {
+  docNum: string;
+  docDate: string;
+  payment: PaymentMethod;
+  status: OrderStatus;
+  notes: string;
+  warranty: string;
+  discountPct: number;
+  taxPct: number;
+  symbol: string;
+}
+
+export interface FinanceTotals {
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  finalTotal: number;
+}
+
+export interface SocialLink {
+  id: 'instagram' | 'tiktok';
+  handle: string;
+  url: string;
+}
