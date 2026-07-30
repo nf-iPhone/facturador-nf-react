@@ -1,18 +1,39 @@
-import type { FinanceTotals, InvoiceItem } from '../types/invoice';
+import type { CanjeData, FinanceTotals, InvoiceItem } from '../types/invoice';
 
-/** Cálculo puro de subtotal, descuento, IVA y total neto. */
+interface TotalsOptions {
+  discountPct: number;
+  taxPct: number;
+  aplicaDescuento?: boolean;
+  aplicaIva?: boolean;
+  canje?: Pick<CanjeData, 'aplicaCanje' | 'valorDescontar'>;
+}
+
+/** Cálculo puro de subtotal, descuento, IVA, canje y total neto (≥ 0). */
 export function calculateTotals(
   items: InvoiceItem[],
-  discountPct: number,
-  taxPct: number,
+  options: TotalsOptions,
 ): FinanceTotals {
-  const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const discountAmount = subtotal * (discountPct / 100);
-  const afterDiscount = subtotal - discountAmount;
-  const taxAmount = afterDiscount * (taxPct / 100);
-  const finalTotal = afterDiscount + taxAmount;
+  const {
+    discountPct,
+    taxPct,
+    aplicaDescuento = true,
+    aplicaIva = true,
+    canje = { aplicaCanje: false, valorDescontar: 0 },
+  } = options;
 
-  return { subtotal, discountAmount, taxAmount, finalTotal };
+  const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+  const effectiveDiscountPct = aplicaDescuento ? discountPct : 0;
+  const effectiveTaxPct = aplicaIva ? taxPct : 0;
+
+  const discountAmount = subtotal * (effectiveDiscountPct / 100);
+  const afterDiscount = subtotal - discountAmount;
+  const taxAmount = afterDiscount * (effectiveTaxPct / 100);
+  const beforeCanje = afterDiscount + taxAmount;
+  const canjeAmount =
+    canje.aplicaCanje && canje.valorDescontar > 0 ? canje.valorDescontar : 0;
+  const finalTotal = Math.max(0, beforeCanje - canjeAmount);
+
+  return { subtotal, discountAmount, taxAmount, canjeAmount, finalTotal };
 }
 
 export function getStatusBadgeClass(status: string): string {

@@ -24,3 +24,19 @@ export function todayISO(): string {
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
+
+/**
+ * Modelo en MAYÚSCULAS, excepto la marca "iPhone"
+ * (i minúscula, P mayúscula, resto minúscula).
+ * Ej: "iphone 13 pro" → "iPhone 13 PRO"
+ */
+export function formatModelName(value: string): string {
+  return value.replace(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+/g, (word) => {
+    if (/^iphone$/i.test(word)) return 'iPhone';
+    if (/^iphone/i.test(word)) {
+      return `iPhone${word.slice(6).toUpperCase()}`;
+    }
+    return word.toUpperCase();
+  });
+}
+

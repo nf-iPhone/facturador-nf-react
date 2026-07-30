@@ -6,8 +6,20 @@
 
 /* Hoja A4: paddings no deben sumar altura fuera de 297mm */
 #print-sheet,
-.print-area {
+#pdf-content,
+.print-area,
+.pdf-sheet {
   box-sizing: border-box;
+}
+
+/* Saltos de página entre presupuestos (PDF / impresión) */
+.pdf-sheet {
+  page-break-after: always;
+  break-after: page;
+}
+.pdf-sheet:last-child {
+  page-break-after: auto;
+  break-after: auto;
 }
 
 /* Estilos específicos para impresión */
@@ -37,8 +49,15 @@
     display: block !important;
     overflow: visible !important;
   }
+  #pdf-content {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    gap: 0 !important;
+    box-shadow: none !important;
+  }
   #print-sheet,
-  .print-area {
+  .print-area,
+  .pdf-sheet {
     box-sizing: border-box !important;
     width: 210mm !important;
     max-width: 210mm !important;
@@ -51,6 +70,12 @@
     border-radius: 0 !important;
     aspect-ratio: auto !important;
     overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  .pdf-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
   @page {
     size: A4;

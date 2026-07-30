@@ -55,12 +55,34 @@ export interface InvoiceData {
   discountPct: number;
   taxPct: number;
   symbol: string;
+  aplicaDescuento: boolean;
+  aplicaIva: boolean;
+}
+
+/** Equipo entregado en parte de pago (Plan Canje). */
+export interface CanjeData {
+  aplicaCanje: boolean;
+  modeloEntregado: string;
+  valorDescontar: number;
+}
+
+/** Snapshot de un presupuesto agregado al comprobante multipágina. */
+export interface Presupuesto {
+  id: number;
+  items: InvoiceItem[];
+  canje: CanjeData;
+  aplicaDescuento: boolean;
+  discountPct: number;
+  aplicaIva: boolean;
+  taxPct: number;
+  totals: FinanceTotals;
 }
 
 export interface FinanceTotals {
   subtotal: number;
   discountAmount: number;
   taxAmount: number;
+  canjeAmount: number;
   finalTotal: number;
 }
 

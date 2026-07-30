@@ -1,4 +1,4 @@
-import { FileText, MessageCircle, Printer } from 'lucide-react';
+import { FileText, MessageCircle, PlusCircle, Printer, Trash2 } from 'lucide-react';
 import {
   EMISOR_ADDRESS,
   EMISOR_EMAIL,
@@ -9,6 +9,7 @@ import {
 } from '../constants/emisor';
 import type { InvoiceState } from '../hooks/useInvoiceState';
 import type { DocType, OrderStatus, PaymentMethod } from '../types/invoice';
+import { formatCurrency, formatModelName } from '../utils/format';
 import { InstagramIcon, TikTokIcon } from './BrandIcons';
 import { DatePickerField } from './DatePickerField';
 import { InvoiceTable } from './InvoiceTable';
@@ -44,10 +45,16 @@ export function ControlPanel({
     updateClientField,
     techData,
     updateTechField,
+    canjeData,
+    updateCanjeField,
     items,
     addItem,
     deleteItem,
     updateItem,
+    presupuestos,
+    addPresupuesto,
+    removePresupuesto,
+    presupuestosGrandTotal,
   } = state;
 
   return (
@@ -331,16 +338,175 @@ export function ControlPanel({
           onDelete={deleteItem}
         />
 
+        {/* Plan Canje (Venta / Presupuesto) */}
+        {docType !== 'Soporte' && (
+          <div className="space-y-3 bg-emerald-950/20 p-3 rounded-xl border border-emerald-900/30">
+            <div className="flex items-center justify-between border-b border-emerald-900/40 pb-1">
+              <h2 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                Plan Canje
+              </h2>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {canjeData.aplicaCanje ? 'Activo' : 'Inactivo'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={canjeData.aplicaCanje}
+                  onChange={(e) =>
+                    updateCanjeField('aplicaCanje', e.target.checked)
+                  }
+                  className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                />
+              </label>
+            </div>
+
+            {canjeData.aplicaCanje && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">
+                    Modelo del equipo entregado
+                  </label>
+                  <input
+                    type="text"
+                    value={canjeData.modeloEntregado}
+                    placeholder="Ej: iPhone 11 64GB"
+                    onChange={(e) =>
+                      updateCanjeField(
+                        'modeloEntregado',
+                        formatModelName(e.target.value),
+                      )
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">
+                    Valor a descontar
+                  </label>
+                  <input
+                    type="number"
+                    value={canjeData.valorDescontar}
+                    min={0}
+                    step="any"
+                    onChange={(e) =>
+                      updateCanjeField(
+                        'valorDescontar',
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Agregar presupuestos al comprobante multipágina */}
+        {docType === 'Presupuesto' && (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => addPresupuesto()}
+              className="w-full bg-blue-600 hover:bg-blue-500 transition-colors text-white text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-md shadow-blue-950/30"
+            >
+              <PlusCircle size={14} /> Agregar al comprobante
+            </button>
+
+            <div className="space-y-2 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
+              <div className="flex items-center justify-between border-b border-slate-700/50 pb-1">
+                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Presupuestos en el PDF
+                </h2>
+                <span className="text-[10px] text-slate-500">
+                  {presupuestos.length} agregado
+                  {presupuestos.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {presupuestos.length === 0 ? (
+                <p className="text-[11px] text-slate-500 text-center py-3">
+                  Todavía no hay presupuestos. Cargá uno y agregalo.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {presupuestos.map((p, index) => {
+                    const title =
+                      p.items[0]?.description.trim() ||
+                      `Presupuesto #${index + 1}`;
+                    return (
+                      <li
+                        key={p.id}
+                        className="flex items-start gap-2 bg-slate-950/60 border border-slate-700/50 rounded-lg px-2.5 py-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-white truncate">
+                            #{index + 1} · {title}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {p.canje.aplicaCanje
+                              ? `Canje: ${p.canje.modeloEntregado}`
+                              : 'Sin canje'}
+                            {' · '}
+                            {formatCurrency(
+                              p.totals.finalTotal,
+                              invoiceData.symbol || '$',
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePresupuesto(p.id)}
+                          className="text-red-400 hover:text-red-300 transition-colors shrink-0 mt-0.5"
+                          aria-label={`Eliminar presupuesto ${index + 1}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {presupuestos.length > 1 && (
+                <p className="text-[11px] font-semibold text-emerald-400 text-right pt-1 border-t border-slate-700/40">
+                  Total general:{' '}
+                  {formatCurrency(
+                    presupuestosGrandTotal,
+                    invoiceData.symbol || '$',
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Totales */}
         <div className="space-y-3 bg-slate-900/30 p-3 rounded-xl border border-slate-700/30">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/50 pb-1">
             Configuración de Totales
           </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-medium">
                 Descuento (%)
+              </span>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {invoiceData.aplicaDescuento ? 'Activo' : 'Inactivo'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={invoiceData.aplicaDescuento}
+                  onChange={(e) =>
+                    updateInvoiceField('aplicaDescuento', e.target.checked)
+                  }
+                  className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                />
               </label>
+            </div>
+            {invoiceData.aplicaDescuento && (
               <input
                 type="number"
                 value={invoiceData.discountPct}
@@ -354,11 +520,29 @@ export function ControlPanel({
                 }
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
               />
-            </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-medium">
                 IVA / Impuesto (%)
+              </span>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {invoiceData.aplicaIva ? 'Activo' : 'Inactivo'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={invoiceData.aplicaIva}
+                  onChange={(e) =>
+                    updateInvoiceField('aplicaIva', e.target.checked)
+                  }
+                  className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
+                />
               </label>
+            </div>
+            {invoiceData.aplicaIva && (
               <input
                 type="number"
                 value={invoiceData.taxPct}
@@ -369,8 +553,9 @@ export function ControlPanel({
                 }
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
               />
-            </div>
+            )}
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] text-slate-400 mb-1">

@@ -1,5 +1,6 @@
 import { Wrench } from 'lucide-react';
 import type { TechData } from '../types/invoice';
+import { formatModelName } from '../utils/format';
 
 interface TechSpecsFormProps {
   techData: TechData;
@@ -22,7 +23,7 @@ export function TechSpecsForm({ techData, onChange }: TechSpecsFormProps) {
             <input
               type="text"
               value={techData.model}
-              onChange={(e) => onChange('model', e.target.value)}
+              onChange={(e) => onChange('model', formatModelName(e.target.value))}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
             />
           </div>

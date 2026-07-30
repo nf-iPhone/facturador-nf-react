@@ -68,9 +68,9 @@ export function openWhatsAppChat(phoneWithPlus: string, message: string): void {
 }
 
 /**
- * Genera y descarga el PDF a partir del nodo React (ref de la hoja A4).
- * Recorte estricto (~296mm) + html2canvas con width/height fijos para evitar
- * la 2ª página en blanco por un overflow de unos pocos píxeles.
+ * Genera y descarga el PDF.
+ * - 1 hoja: recorte estricto A4 (evita página en blanco).
+ * - Multipágina (varios presupuestos): page-break CSS por cada .pdf-sheet.
  */
 export async function downloadInvoicePdf(
   element: HTMLElement,
@@ -83,7 +83,6 @@ export async function downloadInvoicePdf(
     throw new Error('No se pudo cargar html2pdf.js correctamente.');
   }
 
-  // Asegura que imágenes (logo) estén listas antes del canvas
   const images = Array.from(element.querySelectorAll('img'));
   await Promise.all(
     images.map(
@@ -97,7 +96,10 @@ export async function downloadInvoicePdf(
     ),
   );
 
-  // 1. Guardar estilos originales
+  const isMultiPage =
+    element.dataset.multipage === 'true' ||
+    element.querySelectorAll('.pdf-sheet').length > 1;
+
   const originalMinHeight = element.style.minHeight;
   const originalHeight = element.style.height;
   const originalMaxHeight = element.style.maxHeight;
@@ -109,25 +111,56 @@ export async function downloadInvoicePdf(
   const originalMargin = element.style.margin;
   const originalPadding = element.style.padding;
   const originalBorder = element.style.border;
+  const originalGap = element.style.gap;
 
-  // 2. Forzar dimensiones A4 con 1mm de holgura y recortar desbordes
   element.style.boxSizing = 'border-box';
-  element.style.minHeight = '296mm';
-  element.style.height = '296mm';
-  element.style.maxHeight = '296mm';
-  element.style.overflow = 'hidden';
   element.style.boxShadow = 'none';
   element.style.aspectRatio = 'auto';
   element.style.width = '210mm';
   element.style.maxWidth = '210mm';
   element.style.margin = '0';
   element.style.border = 'none';
+  element.style.gap = '0';
 
-  // Forzar reflow antes de medir
+  if (isMultiPage) {
+    element.style.minHeight = 'auto';
+    element.style.height = 'auto';
+    element.style.maxHeight = 'none';
+    element.style.overflow = 'visible';
+
+    element.querySelectorAll<HTMLElement>('.pdf-sheet').forEach((sheet) => {
+      sheet.style.boxSizing = 'border-box';
+      sheet.style.width = '210mm';
+      sheet.style.maxWidth = '210mm';
+      sheet.style.minHeight = '296mm';
+      sheet.style.height = '296mm';
+      sheet.style.maxHeight = '296mm';
+      sheet.style.overflow = 'hidden';
+      sheet.style.boxShadow = 'none';
+      sheet.style.borderRadius = '0';
+      sheet.style.margin = '0';
+      sheet.style.aspectRatio = 'auto';
+    });
+  } else {
+    const sheet =
+      element.querySelector<HTMLElement>('.pdf-sheet') ?? element;
+    element.style.minHeight = '296mm';
+    element.style.height = '296mm';
+    element.style.maxHeight = '296mm';
+    element.style.overflow = 'hidden';
+    sheet.style.minHeight = '296mm';
+    sheet.style.height = '296mm';
+    sheet.style.maxHeight = '296mm';
+    sheet.style.overflow = 'hidden';
+    sheet.style.boxShadow = 'none';
+  }
+
   void element.offsetHeight;
 
-  const width = element.clientWidth;
-  const height = element.clientHeight;
+  const width = element.clientWidth || 794;
+  const height = isMultiPage
+    ? Math.max(element.scrollHeight, element.clientHeight)
+    : element.clientHeight;
 
   const opt = {
     margin: 0 as const,
@@ -140,11 +173,10 @@ export async function downloadInvoicePdf(
       letterRendering: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
-      // Recorte exacto en el borde del elemento (ignora scrollHeight)
       width,
-      height,
+      height: isMultiPage ? undefined : height,
       windowWidth: width,
-      windowHeight: height,
+      windowHeight: isMultiPage ? height : height,
       scrollX: 0,
       scrollY: 0,
       x: 0,
@@ -152,17 +184,45 @@ export async function downloadInvoicePdf(
       onclone: (_clonedDoc: Document, clonedElement: HTMLElement) => {
         clonedElement.style.boxSizing = 'border-box';
         clonedElement.style.aspectRatio = 'auto';
-        clonedElement.style.minHeight = '296mm';
-        clonedElement.style.height = '296mm';
-        clonedElement.style.maxHeight = '296mm';
         clonedElement.style.width = '210mm';
         clonedElement.style.maxWidth = '210mm';
         clonedElement.style.margin = '0';
         clonedElement.style.border = 'none';
         clonedElement.style.boxShadow = 'none';
-        clonedElement.style.borderRadius = '0';
-        clonedElement.style.transform = 'none';
-        clonedElement.style.overflow = 'hidden';
+        clonedElement.style.gap = '0';
+
+        if (isMultiPage) {
+          clonedElement.style.height = 'auto';
+          clonedElement.style.minHeight = 'auto';
+          clonedElement.style.maxHeight = 'none';
+          clonedElement.style.overflow = 'visible';
+          clonedElement
+            .querySelectorAll<HTMLElement>('.pdf-sheet')
+            .forEach((sheet) => {
+              sheet.style.boxSizing = 'border-box';
+              sheet.style.width = '210mm';
+              sheet.style.minHeight = '296mm';
+              sheet.style.height = '296mm';
+              sheet.style.maxHeight = '296mm';
+              sheet.style.overflow = 'hidden';
+              sheet.style.boxShadow = 'none';
+              sheet.style.borderRadius = '0';
+              sheet.style.margin = '0';
+              sheet.style.pageBreakAfter = 'always';
+              sheet.style.breakAfter = 'page';
+            });
+          const sheets = clonedElement.querySelectorAll<HTMLElement>('.pdf-sheet');
+          const last = sheets[sheets.length - 1];
+          if (last) {
+            last.style.pageBreakAfter = 'auto';
+            last.style.breakAfter = 'auto';
+          }
+        } else {
+          clonedElement.style.minHeight = '296mm';
+          clonedElement.style.height = '296mm';
+          clonedElement.style.maxHeight = '296mm';
+          clonedElement.style.overflow = 'hidden';
+        }
       },
     },
     jsPDF: {
@@ -170,8 +230,9 @@ export async function downloadInvoicePdf(
       format: 'a4' as const,
       orientation: 'portrait' as const,
     },
-    // Desactivar saltos de página automáticos
-    pagebreak: { mode: ['avoid-all'] as string[] },
+    pagebreak: isMultiPage
+      ? { mode: ['css', 'legacy'] as string[], after: '.pdf-sheet' }
+      : { mode: ['avoid-all'] as string[] },
   };
 
   try {
@@ -180,7 +241,6 @@ export async function downloadInvoicePdf(
     console.error('Error al generar el PDF:', error);
     throw error;
   } finally {
-    // 3. Restablecer estilos al instante
     element.style.minHeight = originalMinHeight;
     element.style.height = originalHeight;
     element.style.maxHeight = originalMaxHeight;
@@ -192,5 +252,19 @@ export async function downloadInvoicePdf(
     element.style.margin = originalMargin;
     element.style.padding = originalPadding;
     element.style.border = originalBorder;
+    element.style.gap = originalGap;
+
+    element.querySelectorAll<HTMLElement>('.pdf-sheet').forEach((sheet) => {
+      sheet.style.minHeight = '';
+      sheet.style.height = '';
+      sheet.style.maxHeight = '';
+      sheet.style.overflow = '';
+      sheet.style.boxShadow = '';
+      sheet.style.borderRadius = '';
+      sheet.style.margin = '';
+      sheet.style.width = '';
+      sheet.style.maxWidth = '';
+      sheet.style.aspectRatio = '';
+    });
   }
 }
