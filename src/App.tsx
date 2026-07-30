@@ -33,6 +33,16 @@ function App() {
       return;
     }
 
+    if (
+      state.docType === 'Presupuesto' &&
+      state.presupuestos.length === 0
+    ) {
+      window.alert(
+        'Agregá al menos un presupuesto al comprobante antes de enviarlo por WhatsApp.',
+      );
+      return;
+    }
+
     // Siempre usar el ref de React (hoja A4), no getElementById
     const sheet = printRef.current;
     if (!sheet) {
@@ -43,8 +53,12 @@ function App() {
     }
 
     const filename = buildPdfFilename(state.docType, state.clientData.name);
+    const amountForMessage =
+      state.docType === 'Presupuesto' && state.presupuestos.length > 0
+        ? state.presupuestosGrandTotal
+        : state.totals.finalTotal;
     const total = formatCurrency(
-      state.totals.finalTotal,
+      amountForMessage,
       state.invoiceData.symbol || '$',
     );
     const message = buildWhatsAppMessage({

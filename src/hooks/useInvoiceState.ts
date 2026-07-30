@@ -15,10 +15,18 @@ import type {
   InvoiceItem,
   OrderStatus,
   PaymentMethod,
+  Presupuesto,
   TechData,
 } from '../types/invoice';
 import { calculateTotals } from '../utils/calculations';
 import { todayISO } from '../utils/format';
+
+const EMPTY_ITEM = (): InvoiceItem => ({
+  id: 1,
+  description: '',
+  qty: 1,
+  price: 0,
+});
 
 const DEFAULT_ITEMS: InvoiceItem[] = [
   {
@@ -41,6 +49,12 @@ const DEFAULT_ITEMS: InvoiceItem[] = [
     price: 0,
   },
 ];
+
+const EMPTY_CANJE = (): CanjeData => ({
+  aplicaCanje: false,
+  modeloEntregado: '',
+  valorDescontar: 0,
+});
 
 function loadEmisorName(): string {
   try {
@@ -95,21 +109,24 @@ export function useInvoiceState() {
     diag: 'Cambio de pantalla OLED Original (Calidad Premium) y transferencia de microchip de táctil (IC) para evitar aviso de pieza no original en el sistema.',
   });
 
+  /** Borrador del formulario (ítems + canje del presupuesto en edición). */
   const [items, setItems] = useState<InvoiceItem[]>(DEFAULT_ITEMS);
+  const [canjeData, setCanjeData] = useState<CanjeData>(EMPTY_CANJE);
 
-  const [canjeData, setCanjeData] = useState<CanjeData>({
-    aplicaCanje: false,
-    modeloEntregado: '',
-    valorDescontar: 0,
-  });
+  /** Presupuestos ya agregados al comprobante multipágina. */
+  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
 
-  // Persistencia del nombre comercial del emisor
   useEffect(() => {
     localStorage.setItem(
       EMISOR_STORAGE_KEY,
       JSON.stringify({ name: emisorData.name }),
     );
   }, [emisorData.name]);
+
+  const clearDraftForm = useCallback(() => {
+    setItems([EMPTY_ITEM()]);
+    setCanjeData(EMPTY_CANJE());
+  }, []);
 
   const changeDocType = useCallback(
     (type: DocType) => {
@@ -119,11 +136,18 @@ export function useInvoiceState() {
           ...prev,
           docNum: techData.imei.trim(),
         }));
-        // Plan Canje aplica a venta/presupuesto, no a soporte técnico
         setCanjeData((prev) => ({ ...prev, aplicaCanje: false }));
       }
+      if (type === 'Presupuesto') {
+        // Formulario limpio para ir cargando presupuestos uno a uno
+        setItems([EMPTY_ITEM()]);
+        setCanjeData(EMPTY_CANJE());
+      }
+      if (type === 'Venta' && presupuestos.length === 0) {
+        setItems(DEFAULT_ITEMS);
+      }
     },
-    [techData.imei],
+    [techData.imei, presupuestos.length],
   );
 
   const updateInvoiceField = useCallback(
@@ -146,12 +170,8 @@ export function useInvoiceState() {
 
   const updateTechField = useCallback(
     <K extends keyof TechData>(key: K, value: TechData[K]) => {
-      setTechData((prev) => {
-        const next = { ...prev, [key]: value };
-        return next;
-      });
+      setTechData((prev) => ({ ...prev, [key]: value }));
 
-      // Sincronizar Identificador ↔ IMEI cuando el documento es Soporte
       if (key === 'imei' && docType === 'Soporte') {
         setInvoiceData((prev) => ({
           ...prev,
@@ -207,6 +227,7 @@ export function useInvoiceState() {
     [],
   );
 
+  /** Totales del borrador actual (formulario). */
   const totals = useMemo(
     () =>
       calculateTotals(items, {
@@ -230,6 +251,71 @@ export function useInvoiceState() {
     ],
   );
 
+  const presupuestosGrandTotal = useMemo(
+    () => presupuestos.reduce((sum, p) => sum + p.totals.finalTotal, 0),
+    [presupuestos],
+  );
+
+  const addPresupuesto = useCallback((): boolean => {
+    const validItems = items.filter((i) => i.description.trim().length > 0);
+    if (validItems.length === 0) {
+      window.alert(
+        'Agregá al menos un ítem con descripción antes de sumarlo al comprobante.',
+      );
+      return false;
+    }
+
+    if (canjeData.aplicaCanje) {
+      if (!canjeData.modeloEntregado.trim()) {
+        window.alert('Completá el modelo del equipo entregado en Plan Canje.');
+        return false;
+      }
+      if (!(canjeData.valorDescontar > 0)) {
+        window.alert('Ingresá un valor a descontar mayor a 0 en Plan Canje.');
+        return false;
+      }
+    }
+
+    const snapshotItems = validItems.map((item, index) => ({
+      ...item,
+      id: index + 1,
+    }));
+
+    const snapshotTotals = calculateTotals(snapshotItems, {
+      discountPct: invoiceData.discountPct,
+      taxPct: invoiceData.taxPct,
+      aplicaDescuento: invoiceData.aplicaDescuento,
+      aplicaIva: invoiceData.aplicaIva,
+      canje: {
+        aplicaCanje: canjeData.aplicaCanje,
+        valorDescontar: canjeData.valorDescontar,
+      },
+    });
+
+    setPresupuestos((prev) => {
+      const newId =
+        prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1;
+      const next: Presupuesto = {
+        id: newId,
+        items: snapshotItems,
+        canje: { ...canjeData },
+        aplicaDescuento: invoiceData.aplicaDescuento,
+        discountPct: invoiceData.discountPct,
+        aplicaIva: invoiceData.aplicaIva,
+        taxPct: invoiceData.taxPct,
+        totals: snapshotTotals,
+      };
+      return [...prev, next];
+    });
+
+    clearDraftForm();
+    return true;
+  }, [items, canjeData, invoiceData, clearDraftForm]);
+
+  const removePresupuesto = useCallback((id: number) => {
+    setPresupuestos((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   return {
     docType,
     changeDocType,
@@ -250,6 +336,10 @@ export function useInvoiceState() {
     deleteItem,
     updateItem,
     totals,
+    presupuestos,
+    presupuestosGrandTotal,
+    addPresupuesto,
+    removePresupuesto,
   };
 }
 

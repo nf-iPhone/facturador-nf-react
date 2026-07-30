@@ -66,6 +66,18 @@ export interface CanjeData {
   valorDescontar: number;
 }
 
+/** Snapshot de un presupuesto agregado al comprobante multipágina. */
+export interface Presupuesto {
+  id: number;
+  items: InvoiceItem[];
+  canje: CanjeData;
+  aplicaDescuento: boolean;
+  discountPct: number;
+  aplicaIva: boolean;
+  taxPct: number;
+  totals: FinanceTotals;
+}
+
 export interface FinanceTotals {
   subtotal: number;
   discountAmount: number;
