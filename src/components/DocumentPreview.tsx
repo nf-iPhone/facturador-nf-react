@@ -28,6 +28,7 @@ export function DocumentPreview({ state, printRef }: DocumentPreviewProps) {
     emisorData,
     clientData,
     techData,
+    canjeData,
     items,
     totals,
   } = state;
@@ -312,18 +313,36 @@ export function DocumentPreview({ state, printRef }: DocumentPreviewProps) {
                   {formatCurrency(totals.subtotal, symbol)}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs text-emerald-600 font-semibold">
-                <span>Descuento ({invoiceData.discountPct}%):</span>
-                <span>
-                  {totals.discountAmount > 0
-                    ? `-${formatCurrency(totals.discountAmount, symbol)}`
-                    : formatCurrency(0, symbol)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-xs text-slate-500 font-medium">
-                <span>IVA / Impuesto ({invoiceData.taxPct}%):</span>
-                <span>{formatCurrency(totals.taxAmount, symbol)}</span>
-              </div>
+              {invoiceData.aplicaDescuento && (
+                <div className="flex justify-between items-center text-xs text-emerald-600 font-semibold">
+                  <span>Descuento ({invoiceData.discountPct}%):</span>
+                  <span>
+                    {totals.discountAmount > 0
+                      ? `-${formatCurrency(totals.discountAmount, symbol)}`
+                      : formatCurrency(0, symbol)}
+                  </span>
+                </div>
+              )}
+              {invoiceData.aplicaIva && (
+                <div className="flex justify-between items-center text-xs text-slate-500 font-medium">
+                  <span>IVA / Impuesto ({invoiceData.taxPct}%):</span>
+                  <span>{formatCurrency(totals.taxAmount, symbol)}</span>
+                </div>
+              )}
+              {canjeData.aplicaCanje && totals.canjeAmount > 0 && (
+                <div className="flex justify-between items-start gap-2 text-xs text-rose-600 font-semibold">
+                  <span className="leading-snug">
+                    Plan Canje
+                    {canjeData.modeloEntregado.trim()
+                      ? ` (${canjeData.modeloEntregado.trim()})`
+                      : ''}
+                    :
+                  </span>
+                  <span className="shrink-0">
+                    -{formatCurrency(totals.canjeAmount, symbol)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center border-t border-slate-100 pt-2 text-sm font-extrabold text-slate-900">
                 <span className="text-base">TOTAL A PAGAR:</span>
                 <span className="text-lg text-slate-950 font-black">

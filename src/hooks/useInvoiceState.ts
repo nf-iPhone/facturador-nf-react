@@ -7,6 +7,7 @@ import {
   EMISOR_STORAGE_KEY,
 } from '../constants/emisor';
 import type {
+  CanjeData,
   ClientData,
   DocType,
   EmisorData,
@@ -62,10 +63,12 @@ export function useInvoiceState() {
     status: 'Entregado',
     notes:
       'Los repuestos y componentes reemplazados cuentan con la garantía especificada. El equipo debe retirarse dentro de los 30 días posteriores al aviso de reparación, de lo contrario se cobrará recargo por depósito. ¡Gracias por confiar en iPhone NF!',
-    warranty: '90 Días',
+    warranty: '30 Días',
     discountPct: 5,
     taxPct: 21,
     symbol: '$',
+    aplicaDescuento: true,
+    aplicaIva: true,
   });
 
   const [emisorData, setEmisorData] = useState<EmisorData>(() => ({
@@ -94,6 +97,12 @@ export function useInvoiceState() {
 
   const [items, setItems] = useState<InvoiceItem[]>(DEFAULT_ITEMS);
 
+  const [canjeData, setCanjeData] = useState<CanjeData>({
+    aplicaCanje: false,
+    modeloEntregado: '',
+    valorDescontar: 0,
+  });
+
   // Persistencia del nombre comercial del emisor
   useEffect(() => {
     localStorage.setItem(
@@ -110,6 +119,8 @@ export function useInvoiceState() {
           ...prev,
           docNum: techData.imei.trim(),
         }));
+        // Plan Canje aplica a venta/presupuesto, no a soporte técnico
+        setCanjeData((prev) => ({ ...prev, aplicaCanje: false }));
       }
     },
     [techData.imei],
@@ -189,14 +200,34 @@ export function useInvoiceState() {
     setInvoiceData((prev) => ({ ...prev, status }));
   }, []);
 
+  const updateCanjeField = useCallback(
+    <K extends keyof CanjeData>(key: K, value: CanjeData[K]) => {
+      setCanjeData((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
+
   const totals = useMemo(
     () =>
-      calculateTotals(
-        items,
-        invoiceData.discountPct,
-        invoiceData.taxPct,
-      ),
-    [items, invoiceData.discountPct, invoiceData.taxPct],
+      calculateTotals(items, {
+        discountPct: invoiceData.discountPct,
+        taxPct: invoiceData.taxPct,
+        aplicaDescuento: invoiceData.aplicaDescuento,
+        aplicaIva: invoiceData.aplicaIva,
+        canje: {
+          aplicaCanje: canjeData.aplicaCanje,
+          valorDescontar: canjeData.valorDescontar,
+        },
+      }),
+    [
+      items,
+      invoiceData.discountPct,
+      invoiceData.taxPct,
+      invoiceData.aplicaDescuento,
+      invoiceData.aplicaIva,
+      canjeData.aplicaCanje,
+      canjeData.valorDescontar,
+    ],
   );
 
   return {
@@ -212,6 +243,8 @@ export function useInvoiceState() {
     updateClientField,
     techData,
     updateTechField,
+    canjeData,
+    updateCanjeField,
     items,
     addItem,
     deleteItem,
