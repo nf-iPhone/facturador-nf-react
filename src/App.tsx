@@ -59,7 +59,7 @@ function App() {
         : state.totals.finalTotal;
     const total = formatCurrency(
       amountForMessage,
-      state.invoiceData.symbol || '$',
+      state.invoiceData.symbol || 'u$d',
     );
     const message = buildWhatsAppMessage({
       clientName: state.clientData.name,

@@ -9,7 +9,7 @@ import {
 } from '../constants/emisor';
 import type { InvoiceState } from '../hooks/useInvoiceState';
 import type { DocType, OrderStatus, PaymentMethod } from '../types/invoice';
-import { formatCurrency, formatModelName } from '../utils/format';
+import { formatCurrency, formatModelName, normalizeIPhone } from '../utils/format';
 import { InstagramIcon, TikTokIcon } from './BrandIcons';
 import { DatePickerField } from './DatePickerField';
 import { InvoiceTable } from './InvoiceTable';
@@ -450,7 +450,7 @@ export function ControlPanel({
                             {' · '}
                             {formatCurrency(
                               p.totals.finalTotal,
-                              invoiceData.symbol || '$',
+                              invoiceData.symbol || 'u$d',
                             )}
                           </p>
                         </div>
@@ -473,7 +473,7 @@ export function ControlPanel({
                   Total general:{' '}
                   {formatCurrency(
                     presupuestosGrandTotal,
-                    invoiceData.symbol || '$',
+                    invoiceData.symbol || 'u$d',
                   )}
                 </p>
               )}
@@ -592,7 +592,9 @@ export function ControlPanel({
           <textarea
             rows={3}
             value={invoiceData.notes}
-            onChange={(e) => updateInvoiceField('notes', e.target.value)}
+            onChange={(e) =>
+              updateInvoiceField('notes', normalizeIPhone(e.target.value))
+            }
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors resize-y"
           />
         </div>

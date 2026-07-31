@@ -23,6 +23,7 @@ import {
 } from '../utils/calculations';
 import { formatCurrency, formatDate } from '../utils/format';
 import { InstagramIcon, TikTokIcon } from './BrandIcons';
+import { TotalEnPesos } from './TotalEnPesos';
 
 export interface InvoiceSheetProps {
   docType: DocType;
@@ -61,7 +62,7 @@ export function InvoiceSheet({
   className = '',
   showTechSection = false,
 }: InvoiceSheetProps) {
-  const symbol = invoiceData.symbol || '$';
+  const symbol = invoiceData.symbol || 'u$d';
   const badge = getDocBadgeConfig(docType);
   const instagram = EMISOR_SOCIAL[0];
   const tiktok = EMISOR_SOCIAL[1];
@@ -369,6 +370,7 @@ export function InvoiceSheet({
                 {formatCurrency(totals.finalTotal, symbol)}
               </span>
             </div>
+            <TotalEnPesos usdTotal={totals.finalTotal} />
           </div>
         </div>
 

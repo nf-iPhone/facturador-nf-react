@@ -6,6 +6,14 @@ export function formatCurrency(amount: number, symbol: string): string {
   })}`;
 }
 
+/** Equivalente en pesos argentinos con símbolo $. */
+export function formatArs(amount: number): string {
+  return `$ ${amount.toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
+
 /** Convierte AAAA-MM-DD a DD/MM/AAAA. */
 export function formatDate(dateString: string): string {
   if (!dateString) return '—';
@@ -26,17 +34,28 @@ export function todayISO(): string {
 }
 
 /**
+ * Normaliza cualquier variante de "iphone" / "IPHONE" / "Iphone" a "iPhone"
+ * (toda minúscula salvo la P).
+ */
+export function normalizeIPhone(value: string): string {
+  return value.replace(/iphone/gi, 'iPhone');
+}
+
+/**
  * Modelo en MAYÚSCULAS, excepto la marca "iPhone"
  * (i minúscula, P mayúscula, resto minúscula).
  * Ej: "iphone 13 pro" → "iPhone 13 PRO"
  */
 export function formatModelName(value: string): string {
-  return value.replace(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+/g, (word) => {
-    if (/^iphone$/i.test(word)) return 'iPhone';
-    if (/^iphone/i.test(word)) {
-      return `iPhone${word.slice(6).toUpperCase()}`;
-    }
-    return word.toUpperCase();
-  });
+  return normalizeIPhone(
+    value.replace(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+/g, (word) => {
+      if (/^iphone$/i.test(word)) return 'iPhone';
+      if (/^iphone/i.test(word)) {
+        return `iPhone${word.slice(6).toUpperCase()}`;
+      }
+      return word.toUpperCase();
+    }),
+  );
 }
+
 

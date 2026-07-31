@@ -1,6 +1,6 @@
 import { Wrench } from 'lucide-react';
 import type { TechData } from '../types/invoice';
-import { formatModelName } from '../utils/format';
+import { formatModelName, normalizeIPhone } from '../utils/format';
 
 interface TechSpecsFormProps {
   techData: TechData;
@@ -71,7 +71,7 @@ export function TechSpecsForm({ techData, onChange }: TechSpecsFormProps) {
           <textarea
             rows={2}
             value={techData.fault}
-            onChange={(e) => onChange('fault', e.target.value)}
+            onChange={(e) => onChange('fault', normalizeIPhone(e.target.value))}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
           />
         </div>
@@ -82,7 +82,7 @@ export function TechSpecsForm({ techData, onChange }: TechSpecsFormProps) {
           <textarea
             rows={2}
             value={techData.diag}
-            onChange={(e) => onChange('diag', e.target.value)}
+            onChange={(e) => onChange('diag', normalizeIPhone(e.target.value))}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
           />
         </div>

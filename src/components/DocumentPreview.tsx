@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import type { InvoiceState } from '../hooks/useInvoiceState';
 import { formatCurrency } from '../utils/format';
 import { InvoiceSheet } from './InvoiceSheet';
+import { TotalEnPesos } from './TotalEnPesos';
 
 interface DocumentPreviewProps {
   state: InvoiceState;
@@ -22,7 +23,7 @@ export function DocumentPreview({ state, printRef }: DocumentPreviewProps) {
     presupuestosGrandTotal,
   } = state;
 
-  const symbol = invoiceData.symbol || '$';
+  const symbol = invoiceData.symbol || 'u$d';
   const isMultiPresupuesto = docType === 'Presupuesto';
 
   return (
@@ -102,13 +103,16 @@ export function DocumentPreview({ state, printRef }: DocumentPreviewProps) {
                       })}
                     </ul>
                   </div>
-                  <div className="border-t-2 border-slate-100 pt-4 flex justify-between items-center">
-                    <span className="text-sm font-extrabold text-slate-900 uppercase">
-                      Total general
-                    </span>
-                    <span className="text-xl font-black text-slate-950">
-                      {formatCurrency(presupuestosGrandTotal, symbol)}
-                    </span>
+                  <div className="border-t-2 border-slate-100 pt-4 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-extrabold text-slate-900 uppercase">
+                        Total general
+                      </span>
+                      <span className="text-xl font-black text-slate-950">
+                        {formatCurrency(presupuestosGrandTotal, symbol)}
+                      </span>
+                    </div>
+                    <TotalEnPesos usdTotal={presupuestosGrandTotal} />
                   </div>
                 </div>
               )}

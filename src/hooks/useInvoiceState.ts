@@ -19,7 +19,7 @@ import type {
   TechData,
 } from '../types/invoice';
 import { calculateTotals } from '../utils/calculations';
-import { todayISO } from '../utils/format';
+import { normalizeIPhone, todayISO } from '../utils/format';
 
 const EMPTY_ITEM = (): InvoiceItem => ({
   id: 1,
@@ -80,7 +80,7 @@ export function useInvoiceState() {
     warranty: '30 Días',
     discountPct: 5,
     taxPct: 21,
-    symbol: '$',
+    symbol: 'u$d',
     aplicaDescuento: true,
     aplicaIva: true,
   });
@@ -205,7 +205,7 @@ export function useInvoiceState() {
           if (field === 'price') {
             return { ...item, price: parseFloat(value) || 0 };
           }
-          return { ...item, description: value };
+          return { ...item, description: normalizeIPhone(value) };
         }),
       );
     },
