@@ -21,7 +21,7 @@ import {
   getDocBadgeConfig,
   getStatusBadgeClass,
 } from '../utils/calculations';
-import { formatCurrency, formatDate } from '../utils/format';
+import { formatArs, formatCurrency, formatDate } from '../utils/format';
 import { InstagramIcon, TikTokIcon } from './BrandIcons';
 import { TotalEnPesos } from './TotalEnPesos';
 
@@ -350,7 +350,7 @@ export function InvoiceSheet({
                 <span>{formatCurrency(totals.taxAmount, symbol)}</span>
               </div>
             )}
-            {canje.aplicaCanje && totals.canjeAmount > 0 && (
+            {canje.aplicaCanje && canje.valorDescontar > 0 && (
               <div className="flex justify-between items-start gap-2 text-xs text-rose-600 font-semibold">
                 <span className="leading-snug">
                   Plan Canje
@@ -359,9 +359,24 @@ export function InvoiceSheet({
                     : ''}
                   :
                 </span>
-                <span className="shrink-0">
-                  -{formatCurrency(totals.canjeAmount, symbol)}
-                </span>
+                <div className="shrink-0 text-right">
+                  {canje.moneda === 'ARS' ? (
+                    <>
+                      <span className="block">- ARS {formatArs(canje.valorDescontar)}</span>
+                      {totals.canjeAmount > 0 ? (
+                        <span className="block text-[10px] text-slate-500 font-normal mt-0.5">
+                          Equivale a: -{formatCurrency(totals.canjeAmount, symbol)}
+                        </span>
+                      ) : (
+                        <span className="block text-[10px] text-rose-500/70 font-normal mt-0.5">
+                          Cotización no disponible
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span>-{formatCurrency(totals.canjeAmount, symbol)}</span>
+                  )}
+                </div>
               </div>
             )}
             <div className="flex justify-between items-center border-t border-slate-100 pt-2 text-sm font-extrabold text-slate-900">

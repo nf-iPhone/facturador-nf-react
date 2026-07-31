@@ -59,11 +59,16 @@ export interface InvoiceData {
   aplicaIva: boolean;
 }
 
+export type CanjeMoneda = 'USD' | 'ARS';
+
 /** Equipo entregado en parte de pago (Plan Canje). */
 export interface CanjeData {
   aplicaCanje: boolean;
   modeloEntregado: string;
+  /** Monto en la moneda indicada por `moneda` (no siempre USD). */
   valorDescontar: number;
+  /** Moneda del valor ingresado. El descuento en el total siempre se aplica en USD. */
+  moneda: CanjeMoneda;
 }
 
 /** Snapshot de un presupuesto agregado al comprobante multipágina. */

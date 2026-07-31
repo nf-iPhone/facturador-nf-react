@@ -20,6 +20,7 @@ import type {
 } from '../types/invoice';
 import { calculateTotals } from '../utils/calculations';
 import { normalizeIPhone, todayISO } from '../utils/format';
+import { useDolarBlue } from './useDolarBlue';
 
 const EMPTY_ITEM = (): InvoiceItem => ({
   id: 1,
@@ -54,6 +55,7 @@ const EMPTY_CANJE = (): CanjeData => ({
   aplicaCanje: false,
   modeloEntregado: '',
   valorDescontar: 0,
+  moneda: 'USD',
 });
 
 function loadEmisorName(): string {
@@ -68,6 +70,7 @@ function loadEmisorName(): string {
 }
 
 export function useInvoiceState() {
+  const { venta: dolarVenta } = useDolarBlue();
   const [docType, setDocType] = useState<DocType>('Venta');
 
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
@@ -115,6 +118,8 @@ export function useInvoiceState() {
 
   /** Presupuestos ya agregados al comprobante multipágina. */
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
+  /** Índice del presupuesto en edición (`null` = modo agregar). */
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     localStorage.setItem(
@@ -131,6 +136,7 @@ export function useInvoiceState() {
   const changeDocType = useCallback(
     (type: DocType) => {
       setDocType(type);
+      setEditingIndex(null);
       if (type === 'Soporte') {
         setInvoiceData((prev) => ({
           ...prev,
@@ -227,7 +233,7 @@ export function useInvoiceState() {
     [],
   );
 
-  /** Totales del borrador actual (formulario). */
+  /** Totales del borrador actual (formulario). `canjeAmount` siempre en USD. */
   const totals = useMemo(
     () =>
       calculateTotals(items, {
@@ -238,7 +244,9 @@ export function useInvoiceState() {
         canje: {
           aplicaCanje: canjeData.aplicaCanje,
           valorDescontar: canjeData.valorDescontar,
+          moneda: canjeData.moneda,
         },
+        dolarVenta,
       }),
     [
       items,
@@ -248,6 +256,8 @@ export function useInvoiceState() {
       invoiceData.aplicaIva,
       canjeData.aplicaCanje,
       canjeData.valorDescontar,
+      canjeData.moneda,
+      dolarVenta,
     ],
   );
 
@@ -255,6 +265,30 @@ export function useInvoiceState() {
     () => presupuestos.reduce((sum, p) => sum + p.totals.finalTotal, 0),
     [presupuestos],
   );
+
+  const startEditPresupuesto = useCallback(
+    (index: number) => {
+      const presupuesto = presupuestos[index];
+      if (!presupuesto) return;
+
+      setItems(presupuesto.items.map((item) => ({ ...item })));
+      setCanjeData({ ...presupuesto.canje });
+      setInvoiceData((prev) => ({
+        ...prev,
+        aplicaDescuento: presupuesto.aplicaDescuento,
+        discountPct: presupuesto.discountPct,
+        aplicaIva: presupuesto.aplicaIva,
+        taxPct: presupuesto.taxPct,
+      }));
+      setEditingIndex(index);
+    },
+    [presupuestos],
+  );
+
+  const cancelEditPresupuesto = useCallback(() => {
+    clearDraftForm();
+    setEditingIndex(null);
+  }, [clearDraftForm]);
 
   const addPresupuesto = useCallback((): boolean => {
     const validItems = items.filter((i) => i.description.trim().length > 0);
@@ -274,6 +308,15 @@ export function useInvoiceState() {
         window.alert('Ingresá un valor a descontar mayor a 0 en Plan Canje.');
         return false;
       }
+      if (
+        canjeData.moneda === 'ARS' &&
+        (dolarVenta == null || dolarVenta <= 0)
+      ) {
+        window.alert(
+          'No hay cotización del dólar disponible para convertir el canje en ARS. Reintentá en unos segundos.',
+        );
+        return false;
+      }
     }
 
     const snapshotItems = validItems.map((item, index) => ({
@@ -289,31 +332,54 @@ export function useInvoiceState() {
       canje: {
         aplicaCanje: canjeData.aplicaCanje,
         valorDescontar: canjeData.valorDescontar,
+        moneda: canjeData.moneda,
       },
+      dolarVenta,
     });
 
-    setPresupuestos((prev) => {
-      const newId =
-        prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1;
-      const next: Presupuesto = {
-        id: newId,
-        items: snapshotItems,
-        canje: { ...canjeData },
-        aplicaDescuento: invoiceData.aplicaDescuento,
-        discountPct: invoiceData.discountPct,
-        aplicaIva: invoiceData.aplicaIva,
-        taxPct: invoiceData.taxPct,
-        totals: snapshotTotals,
-      };
-      return [...prev, next];
-    });
+    const snapshotFields = {
+      items: snapshotItems,
+      canje: { ...canjeData },
+      aplicaDescuento: invoiceData.aplicaDescuento,
+      discountPct: invoiceData.discountPct,
+      aplicaIva: invoiceData.aplicaIva,
+      taxPct: invoiceData.taxPct,
+      totals: snapshotTotals,
+    };
+
+    if (editingIndex !== null) {
+      setPresupuestos((prev) =>
+        prev.map((p, i) =>
+          i === editingIndex ? { ...p, ...snapshotFields } : p,
+        ),
+      );
+    } else {
+      setPresupuestos((prev) => {
+        const newId =
+          prev.length > 0 ? Math.max(...prev.map((p) => p.id)) + 1 : 1;
+        return [...prev, { id: newId, ...snapshotFields }];
+      });
+    }
 
     clearDraftForm();
+    setEditingIndex(null);
     return true;
-  }, [items, canjeData, invoiceData, clearDraftForm]);
+  }, [items, canjeData, invoiceData, editingIndex, clearDraftForm, dolarVenta]);
 
   const removePresupuesto = useCallback((id: number) => {
-    setPresupuestos((prev) => prev.filter((p) => p.id !== id));
+    setPresupuestos((prev) => {
+      const removeIndex = prev.findIndex((p) => p.id === id);
+      if (removeIndex === -1) return prev;
+
+      setEditingIndex((current) => {
+        if (current === null) return null;
+        if (current === removeIndex) return null;
+        if (current > removeIndex) return current - 1;
+        return current;
+      });
+
+      return prev.filter((p) => p.id !== id);
+    });
   }, []);
 
   return {
@@ -338,6 +404,9 @@ export function useInvoiceState() {
     totals,
     presupuestos,
     presupuestosGrandTotal,
+    editingIndex,
+    startEditPresupuesto,
+    cancelEditPresupuesto,
     addPresupuesto,
     removePresupuesto,
   };

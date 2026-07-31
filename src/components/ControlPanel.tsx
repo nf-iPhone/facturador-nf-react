@@ -1,4 +1,13 @@
-import { FileText, MessageCircle, PlusCircle, Printer, Trash2 } from 'lucide-react';
+import {
+  FileText,
+  MessageCircle,
+  Pencil,
+  PlusCircle,
+  Printer,
+  Save,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   EMISOR_ADDRESS,
   EMISOR_EMAIL,
@@ -8,7 +17,7 @@ import {
   STATUS_OPTIONS,
 } from '../constants/emisor';
 import type { InvoiceState } from '../hooks/useInvoiceState';
-import type { DocType, OrderStatus, PaymentMethod } from '../types/invoice';
+import type { CanjeMoneda, DocType, OrderStatus, PaymentMethod } from '../types/invoice';
 import { formatCurrency, formatModelName, normalizeIPhone } from '../utils/format';
 import { InstagramIcon, TikTokIcon } from './BrandIcons';
 import { DatePickerField } from './DatePickerField';
@@ -52,10 +61,15 @@ export function ControlPanel({
     deleteItem,
     updateItem,
     presupuestos,
+    editingIndex,
+    startEditPresupuesto,
+    cancelEditPresupuesto,
     addPresupuesto,
     removePresupuesto,
     presupuestosGrandTotal,
   } = state;
+
+  const isEditing = editingIndex !== null;
 
   return (
     <aside className="no-print w-full lg:w-[420px] bg-slate-800 border-b lg:border-b-0 lg:border-r border-slate-700 flex flex-col h-auto lg:h-screen lg:sticky lg:top-0 overflow-y-auto">
@@ -383,35 +397,80 @@ export function ControlPanel({
                   <label className="block text-[11px] text-slate-400 mb-1">
                     Valor a descontar
                   </label>
-                  <input
-                    type="number"
-                    value={canjeData.valorDescontar}
-                    min={0}
-                    step="any"
-                    onChange={(e) =>
-                      updateCanjeField(
-                        'valorDescontar',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={canjeData.valorDescontar}
+                      min={0}
+                      step="any"
+                      onChange={(e) =>
+                        updateCanjeField(
+                          'valorDescontar',
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
+                      className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                    <select
+                      value={canjeData.moneda}
+                      onChange={(e) =>
+                        updateCanjeField(
+                          'moneda',
+                          e.target.value as CanjeMoneda,
+                        )
+                      }
+                      className="w-[76px] shrink-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      aria-label="Moneda del valor de canje"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="ARS">ARS</option>
+                    </select>
+                  </div>
+                  {canjeData.moneda === 'ARS' && (
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Se convierte a USD con la cotización Blue (venta) al
+                      calcular el total.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Agregar presupuestos al comprobante multipágina */}
+        {/* Agregar / editar presupuestos al comprobante multipágina */}
         {docType === 'Presupuesto' && (
           <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => addPresupuesto()}
-              className="w-full bg-blue-600 hover:bg-blue-500 transition-colors text-white text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-md shadow-blue-950/30"
-            >
-              <PlusCircle size={14} /> Agregar al comprobante
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => addPresupuesto()}
+                className={`w-full transition-colors text-white text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-md ${
+                  isEditing
+                    ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-950/30'
+                    : 'bg-blue-600 hover:bg-blue-500 shadow-blue-950/30'
+                }`}
+              >
+                {isEditing ? (
+                  <>
+                    <Save size={14} /> Guardar cambios
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle size={14} /> Agregar al comprobante
+                  </>
+                )}
+              </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => cancelEditPresupuesto()}
+                  className="w-full bg-slate-700 hover:bg-slate-600 transition-colors text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <X size={14} /> Cancelar edición
+                </button>
+              )}
+            </div>
 
             <div className="space-y-2 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
               <div className="flex items-center justify-between border-b border-slate-700/50 pb-1">
@@ -434,10 +493,15 @@ export function ControlPanel({
                     const title =
                       p.items[0]?.description.trim() ||
                       `Presupuesto #${index + 1}`;
+                    const isItemEditing = editingIndex === index;
                     return (
                       <li
                         key={p.id}
-                        className="flex items-start gap-2 bg-slate-950/60 border border-slate-700/50 rounded-lg px-2.5 py-2"
+                        className={`flex items-start gap-2 rounded-lg px-2.5 py-2 border ${
+                          isItemEditing
+                            ? 'bg-amber-950/40 border-amber-700/50'
+                            : 'bg-slate-950/60 border-slate-700/50'
+                        }`}
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-semibold text-white truncate">
@@ -454,14 +518,30 @@ export function ControlPanel({
                             )}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removePresupuesto(p.id)}
-                          className="text-red-400 hover:text-red-300 transition-colors shrink-0 mt-0.5"
-                          aria-label={`Eliminar presupuesto ${index + 1}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => startEditPresupuesto(index)}
+                            className={`transition-colors p-1 rounded ${
+                              isItemEditing
+                                ? 'text-amber-300 bg-amber-900/40'
+                                : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800'
+                            }`}
+                            aria-label={`Editar presupuesto ${index + 1}`}
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removePresupuesto(p.id)}
+                            className="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-slate-800"
+                            aria-label={`Eliminar presupuesto ${index + 1}`}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </li>
                     );
                   })}

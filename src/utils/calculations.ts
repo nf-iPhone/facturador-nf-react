@@ -5,7 +5,27 @@ interface TotalsOptions {
   taxPct: number;
   aplicaDescuento?: boolean;
   aplicaIva?: boolean;
-  canje?: Pick<CanjeData, 'aplicaCanje' | 'valorDescontar'>;
+  canje?: Pick<CanjeData, 'aplicaCanje' | 'valorDescontar' | 'moneda'>;
+  /** Cotización Dólar Blue (venta). Requerida si el canje está en ARS. */
+  dolarVenta?: number | null;
+}
+
+/**
+ * Convierte el valor de canje a USD para restarlo del total.
+ * Si la moneda es ARS y no hay cotización válida, retorna 0.
+ */
+export function canjeAmountInUsd(
+  canje: Pick<CanjeData, 'aplicaCanje' | 'valorDescontar' | 'moneda'>,
+  dolarVenta?: number | null,
+): number {
+  if (!canje.aplicaCanje || !(canje.valorDescontar > 0)) return 0;
+
+  if (canje.moneda === 'ARS') {
+    if (dolarVenta == null || dolarVenta <= 0) return 0;
+    return canje.valorDescontar / dolarVenta;
+  }
+
+  return canje.valorDescontar;
 }
 
 /** Cálculo puro de subtotal, descuento, IVA, canje y total neto (≥ 0). */
@@ -18,7 +38,8 @@ export function calculateTotals(
     taxPct,
     aplicaDescuento = true,
     aplicaIva = true,
-    canje = { aplicaCanje: false, valorDescontar: 0 },
+    canje = { aplicaCanje: false, valorDescontar: 0, moneda: 'USD' },
+    dolarVenta = null,
   } = options;
 
   const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
@@ -29,8 +50,7 @@ export function calculateTotals(
   const afterDiscount = subtotal - discountAmount;
   const taxAmount = afterDiscount * (effectiveTaxPct / 100);
   const beforeCanje = afterDiscount + taxAmount;
-  const canjeAmount =
-    canje.aplicaCanje && canje.valorDescontar > 0 ? canje.valorDescontar : 0;
+  const canjeAmount = canjeAmountInUsd(canje, dolarVenta);
   const finalTotal = Math.max(0, beforeCanje - canjeAmount);
 
   return { subtotal, discountAmount, taxAmount, canjeAmount, finalTotal };
